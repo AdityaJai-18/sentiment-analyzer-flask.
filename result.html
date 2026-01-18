@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Feedback Results</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <style>
+        body { background: #ffffff; }
+        .card-quick { border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.04); }
+        .stat { font-size: 1.25rem; font-weight: 600; }
+    </style>
+</head>
+
+<body class="p-4">
+    <div class="container">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>Sentiment Analysis Results</h2>
+            <a href="/" class="btn btn-outline-secondary">← Analyze More</a>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 card-quick text-center">
+                    <div class="text-muted small">Total feedback</div>
+                    <div class="stat">{{ total }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 card-quick text-center">
+                    <div class="text-muted small">Positive</div>
+                    <div class="stat">{{ positive_pct }}%</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 card-quick text-center">
+                    <div class="text-muted small">Neutral</div>
+                    <div class="stat">{{ neutral_pct }}%</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 card-quick text-center">
+                    <div class="text-muted small">Negative</div>
+                    <div class="stat">{{ negative_pct }}%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pie + Bar Charts -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <div class="card p-3 card-quick">
+                    <h6>Sentiment distribution</h6>
+                    <canvas id="sentimentPie" height="220"></canvas>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <div class="card p-3 card-quick">
+                    <h6>Sentiment counts</h6>
+                    <canvas id="sentimentBar" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Words -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card p-3 card-quick">
+                    <h6>Top words (most frequent)</h6>
+                    <canvas id="wordBar" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Table -->
+        <div class="card p-3 card-quick">
+            <h5 class="mb-3">Detailed Results</h5>
+            <table id="resultsTable" class="display" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Feedback</th>
+                        <th>Sentiment</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fb, sentiment, score in tables %}
+                    <tr>
+                        <td>{{ fb }}</td>
+                        <td>{{ sentiment }}</td>
+                        <td>{{ "%.3f"|format(score) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="text-center mt-4 text-muted small">
+            Average score: {{ avg_score }}
+        </footer>
+    </div>
+
+    <!-- Corrected Script -->
+    <script>
+        // Flask generates valid JSON arrays — NO JSON.parse needed
+        const labels = {{ labels|safe }};
+        const values = {{ values|safe }};
+        const topWords = {{ top_words|safe }};
+        const topWordFreqs = {{ top_word_freqs|safe }};
+
+        // Pie Chart
+        new Chart(document.getElementById('sentimentPie'), {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: ['#36A2EB', '#FFCE56', '#FF6384']
+                }]
+            },
+            options: { responsive: true }
+        });
+
+        // Bar Chart
+        new Chart(document.getElementById('sentimentBar'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Count',
+                    data: values
+                }]
+            },
+            options: { 
+                responsive: true, 
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Horizontal Bar - Top Words
+        new Chart(document.getElementById('wordBar'), {
+            type: 'bar',
+            data: {
+                labels: topWords,
+                datasets: [{
+                    label: 'Frequency',
+                    data: topWordFreqs
+                }]
+            },
+            options: { 
+                indexAxis: 'y',
+                responsive: true, 
+                scales: { x: { beginAtZero: true } }
+            }
+        });
+
+        // DataTables
+        $(document).ready(function() {
+            $('#resultsTable').DataTable({
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50],
+                order: [[2, 'desc']]
+            });
+        });
+    </script>
+
+</body>
+</html>
+
